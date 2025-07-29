@@ -35,14 +35,22 @@ schema_view = get_schema_view(
     permission_classes=[],
 )
 
+
+api_version = 'api/v1'
+
+
 urlpatterns = [
     path('panel-control/', admin.site.urls),
 
-    # Register view
-    path('accounts/api/v1/',
+    path(f'webhooks/{api_version}/',
+         include('feedback_tracking.api.webhooks.urls')),
+    path(f'accounts/{api_version}/',
          include('feedback_tracking.api.accounts.urls')),
+    path(f'integrations/{api_version}/',
+         include('feedback_tracking.api.integrations.urls')),
 
-    path('<slug:portal>/api/v1/', include('feedback_tracking.api.urls')),
+    path('<slug:portal>/{api_version}/',
+         include('feedback_tracking.api.urls')),
 
     re_path(r'^swagger(?P<format>\.json|\.yaml)$',
             schema_view.without_ui(cache_timeout=0), name='schema-json'),

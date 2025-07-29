@@ -55,9 +55,9 @@ class UserModelAdmin(BaseUserAdmin):
     list_filter = ('is_staff', 'is_active', 'groups')
 
     fieldsets = (
-        (None, {'fields': ('username', 'email', 'password')}),
+        (None, {'fields': ('username', 'email', 'password', 'stripe_customer_id')}),
         ('Información personal', {
-         'fields': ('first_name', 'middle_name', 'last_name')}),
+         'fields': ('first_name', 'middle_name', 'last_name', 'organization')}),
         ('Permisos', {'fields': ('is_active', 'is_staff',
          'is_superuser', 'groups', 'user_permissions')}),
     )
@@ -66,9 +66,8 @@ class UserModelAdmin(BaseUserAdmin):
         (None, {
             'classes': ('wide',),
             'fields': (
-                'username', 'first_name', 'middle_name', 'last_name', 'email',
-                'password1', 'password2',
-                'is_active', 'is_staff', 'is_superuser', 'groups'
+                'username', 'first_name', 'middle_name', 'last_name', 'email', 'stripe_customer_id', 'organization',
+                'password1', 'password2', 'is_active', 'is_staff', 'is_superuser', 'groups'
             )
         }),
     )

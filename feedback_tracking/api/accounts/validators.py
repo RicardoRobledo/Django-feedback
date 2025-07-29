@@ -2,14 +2,14 @@ __author__ = "Ricardo"
 __version__ = "0.1"
 
 
-def validate_unique_organization(name_exists, administrative_email_exists, company_email_exists, phone_number_exists):
+def validate_unique_organization(name_exists, company_email_exists, phone_number_exists):
     """
     Validate if there are any existing organizations with the same name, administrative email, company email or phone number.
 
     :param name_exists(bool): indicating if the name exists
-    :param administrative_email_exists(bool): indicating if the administrative email exists
     :param company_email_exists(bool): indicating if the company email exists
-    :param phone_number_exists(bool): indicating if the phone number exists
+    :param phone_number_exists(bool): indicating if the phone number 
+
     :return: message with the validation result 
     """
 
@@ -18,10 +18,6 @@ def validate_unique_organization(name_exists, administrative_email_exists, compa
     if name_exists:
 
         message['name'] = 'That organization already exists'
-
-    if administrative_email_exists:
-
-        message['administrative_email'] = 'That administrative email already exists'
 
     if company_email_exists:
 

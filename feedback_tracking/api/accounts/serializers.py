@@ -1,4 +1,7 @@
+from rest_framework import status
+
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from feedback_tracking.administrative_system.users.models import UserModel
 from feedback_tracking.administrative_system.organizations.models import OrganizationModel
@@ -24,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         model: UserModel = UserModel
         fields: tuple = ('first_name', 'middle_name', 'last_name',
-                         'username', 'email', 'password',)
+                         'username', 'email', 'stripe_customer_id', 'password',)
 
     def to_representation(self, instance):
         """
@@ -38,6 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name': instance.last_name,
             'username': instance.username,
             'email': instance.email,
+            'stripe_customer_id': instance.stripe_customer_id,
             'created_at': instance.created_at,
             'is_active': instance.is_active
         }
@@ -85,7 +89,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class OrganizationSerializer(serializers.ModelSerializer):
     """
-    This class seralize our Organization model
+    This class seralize our Organization model without the mercadopago_customer_id
     """
 
     class Meta:
@@ -98,8 +102,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         """
 
         model: OrganizationModel = OrganizationModel
-        fields = ('name', 'state', 'company_email',
-                  'administrative_email', 'phone_number',)
+        fields = ('name', 'state', 'company_email', 'phone_number',)
 
     def to_representation(self, instance):
         """
@@ -111,8 +114,37 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'name': instance.name,
             'state': instance.state,
             'company_email': instance.company_email,
-            'administrative_email': instance.administrative_email,
             'phone_number': instance.phone_number,
             'created_at': instance.created_at,
             'is_active': instance.is_active
         }
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    portal = serializers.CharField(
+        write_only=True, required=True, allow_blank=False)
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['username'] = user.username
+        return token
+
+    def validate(self, attrs):
+        portal = attrs.get('portal', None)
+        data = super().validate(attrs)
+
+        try:
+
+            OrganizationModel.objects.get(
+                portal=portal,
+                is_active=True
+            )
+
+        except OrganizationModel.DoesNotExist:
+
+            raise serializers.ValidationError(
+                detail='Wrong organization',)
+
+        return data

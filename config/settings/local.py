@@ -1,9 +1,17 @@
 from decouple import config
+from corsheaders.defaults import default_headers
 
 
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-signature',
+    'x-machine-number',
+]
 
 # Database
 DATABASES = {

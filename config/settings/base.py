@@ -33,11 +33,15 @@ elif ENVIRONMENT == 'LOCAL':
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
+HMAC_SECRET_KEY = config('HMAC_SECRET_KEY')
 
 SHARED_APPS = [
+    'django_celery_beat',
+    'django_celery_results',
     'django_tenants',
     'rest_framework',
     'rest_framework_simplejwt',
+    'corsheaders',
 
     # Base apps
 
@@ -63,11 +67,15 @@ TENANT_APPS = [
 
     'feedback_tracking.feedback_system.feedbacks',
     'feedback_tracking.feedback_system.locations',
+    'feedback_tracking.feedback_system.permissions',
 
     # API apps
 
     'feedback_tracking.api.accounts',
+    'feedback_tracking.api.webhooks',
+    'feedback_tracking.api.integrations',
     'feedback_tracking.api.feedback_system.feedbacks',
+    'feedback_tracking.api.feedback_system.groups',
     'feedback_tracking.api.feedback_system.locations',
     'feedback_tracking.api.feedback_system.users',
 ]
@@ -75,8 +83,10 @@ TENANT_APPS = [
 INSTALLED_APPS = SHARED_APPS + TENANT_APPS
 
 MIDDLEWARE = [
-    # 'django_tenants.middleware.main.TenantMainMiddleware',
-    'feedback_tracking.base.middleware.PathTenantMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    # Middleware to set the tenant based on the portal name in the path
+    'feedback_tracking.base.middlewares.PathTenantMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -156,6 +166,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.UserModel'
 
+# Stripe
+MERCADOPAGO_ACCESS_TOKEN = config('MERCADOPAGO_ACCESS_TOKEN')
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+
 # Django tenants
 TENANT_MODEL = "organizations.OrganizationModel"
 TENANT_DOMAIN_MODEL = "organizations.DomainModel"
@@ -164,7 +178,6 @@ TENANT_DOMAIN_MODEL = "organizations.DomainModel"
 DATABASE_ROUTERS = (
     'django_tenants.routers.TenantSyncRouter',
 )
-
 
 # Rest Framework
 REST_FRAMEWORK = {
@@ -185,13 +198,13 @@ SIMPLE_JWT = {
 
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': True,
 
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': config('PRIVATE_KEY'),
-    'VERIFYING_KEY': config('PUBLIC_KEY'),
+    'SIGNING_KEY': config('SECRET_KEY'),
+    # 'VERIFYING_KEY': config('SECRET_KEY'),
 
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
@@ -201,6 +214,7 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
     'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
+    'TOKEN_OBTAIN_SERIALIZER': 'feedback_tracking.api.accounts.serializers.CustomTokenObtainPairSerializer',
 
     'JTI_CLAIM': 'jti',
 
@@ -208,3 +222,7 @@ SIMPLE_JWT = {
     # 'SLIDING_TOKEN_LIFETIME': timedelta(minutes=15),
     # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
+
+# Celery
+CELERY_BROKER_URL = config('CELERY_BROKER_URL')

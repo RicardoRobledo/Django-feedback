@@ -2,9 +2,9 @@ from django.db import models
 from feedback_tracking.base.models import BaseModel
 
 
-class Feedback(BaseModel):
+class FeedbackModel(BaseModel):
 
-    class Classification(models.TextChoices):
+    class FeedbackClassification(models.TextChoices):
         EXCELLENT = "EX", "Excelente"
         GOOD = "GO", "Bueno"
         AVERAGE = "AV", "Regular"
@@ -12,31 +12,63 @@ class Feedback(BaseModel):
 
     classification = models.CharField(
         max_length=2,
-        choices=Classification.choices,
-        default=Classification.EXCELLENT
+        choices=FeedbackClassification.choices,
+        default=FeedbackClassification.EXCELLENT
     )
     comment = models.TextField()
     location = models.ForeignKey(
-        "locations.Location", on_delete=models.CASCADE)
+        "locations.LocationModel", on_delete=models.CASCADE, related_name="location_feedbacks")
+
+    def __repr__(self):
+        return f'FeedbackModel(id={self.id}, classification={self.classification}, comment={self.comment}, location={self.location})'
+
+    def __str__(self):
+        return f'{self.id}'
 
 
-class PositiveFeedback(BaseModel):
+class PositiveFeedbackModel(BaseModel):
     feedback = models.TextField()
+    in_use = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'{self.id}'
+
+    def __repr__(self):
+        return f'PositiveFeedbackModel(id={self.id}, feedback={self.feedback}, in_use={self.in_use})'
 
 
-class NegativeFeedback(BaseModel):
+class NegativeFeedbackModel(BaseModel):
     feedback = models.TextField()
+    in_use = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'{self.id}'
+
+    def __repr__(self):
+        return f'NegativeFeedbackModel(id={self.id}, feedback={self.feedback}, in_use={self.in_use})'
 
 
-class PositiveFeedbackType(BaseModel):
+class PositiveFeedbackTypeModel(BaseModel):
     feedback = models.ForeignKey(
-        Feedback, on_delete=models.CASCADE, related_name="positive_types")
+        FeedbackModel, on_delete=models.CASCADE, related_name="positive_types")
     positive_feedback = models.ForeignKey(
-        PositiveFeedback, on_delete=models.CASCADE, related_name="positive_feedbacks")
+        PositiveFeedbackModel, on_delete=models.CASCADE, related_name="positive_feedbacks")
+
+    def __str__(self):
+        return f'{self.id}'
+
+    def __repr__(self):
+        return f'PositiveFeedbackTypeModel(id={self.id}, feedback={self.feedback}, positive_feedback={self.positive_feedback})'
 
 
-class NegativeFeedbackType(models.Model):
+class NegativeFeedbackTypeModel(models.Model):
     feedback = models.ForeignKey(
-        Feedback, on_delete=models.CASCADE, related_name="negative_types")
+        FeedbackModel, on_delete=models.CASCADE, related_name="negative_types")
     negative_feedback = models.ForeignKey(
-        NegativeFeedback, on_delete=models.CASCADE, related_name="negative_feedbacks")
+        NegativeFeedbackModel, on_delete=models.CASCADE, related_name="negative_feedbacks")
+
+    def __str__(self):
+        return f'{self.id}'
+
+    def __repr__(self):
+        return f'NegativeFeedbackTypeModel(id={self.id}, feedback={self.feedback}, negative_feedback={self.negative_feedback})'

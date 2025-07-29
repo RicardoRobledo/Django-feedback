@@ -1,3 +1,9 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import OrganizationModel, PriceModel, SubscriptionModel, PaymentModel
+
+
+admin.site.register(OrganizationModel)
+admin.site.register(SubscriptionModel)
+admin.site.register(PriceModel)
+admin.site.register(PaymentModel)
