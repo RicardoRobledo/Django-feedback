@@ -46,10 +46,8 @@ urlpatterns = [
          include('feedback_tracking.api.webhooks.urls')),
     path(f'accounts/{api_version}/',
          include('feedback_tracking.api.accounts.urls')),
-    path(f'integrations/{api_version}/',
-         include('feedback_tracking.api.integrations.urls')),
 
-    path('<slug:portal>/{api_version}/',
+    path(f'<slug:portal>/{api_version}/',
          include('feedback_tracking.api.urls')),
 
     re_path(r'^swagger(?P<format>\.json|\.yaml)$',

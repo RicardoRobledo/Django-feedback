@@ -17,7 +17,7 @@ from rest_framework.pagination import PageNumberPagination
 from feedback_tracking.feedback_system.feedbacks.models import FeedbackModel, PositiveFeedbackModel, NegativeFeedbackModel, PositiveFeedbackTypeModel, NegativeFeedbackTypeModel
 from feedback_tracking.feedback_system.locations.models import LocationModel, GroupModel, AvailabilityModel
 from feedback_tracking.feedback_system.permissions.models import UserLevelPermissionModel
-from feedback_tracking.api.permissions import BelongsToOrganizationPermission
+from feedback_tracking.api.permissions import BelongsToOrganizationPermission, CanCreateFeedbackUnderPricingLimitPermission
 from .serializers import GETFeedbackSerializer, GETFeedbacksSerializer, GETNegativeFeedbackSerializer, GETPositiveFeedbackSerializer
 from .statistics import get_feedback_distribution
 
@@ -95,7 +95,7 @@ def manage_negative_feedbacks(feedback_classification, feedback_types, feedback_
 
 class FeedbackView(APIView):
 
-    permission_classes = ()
+    permission_classes = (CanCreateFeedbackUnderPricingLimitPermission,)
 
     def post(self, request, *args, **kwargs):
         """
@@ -256,6 +256,9 @@ def get_feedbacks(request, portal):
     :param request: request
     """
 
+    page_size = request.query_params.get('page_size', 30)
+    page = request.query_params.get('page', 1)
+
     group_id = request.query_params.get("group_id", None)
     location_id = request.query_params.get("location_id", None)
     classification = request.query_params.get("classification", None)
@@ -351,7 +354,7 @@ def get_feedbacks(request, portal):
     if location_id:
         feedbacks = feedbacks.filter(location=location)
 
-    paginator.page_size = int(request.query_params.get('page_size', 30))
+    paginator.page_size = int(request.query_params.get('page_size', page_size))
     result_page = paginator.paginate_queryset(feedbacks, request)
     serializer = GETFeedbacksSerializer(result_page, many=True)
 
@@ -429,8 +432,6 @@ def get_feedback_logistics(request, portal):
     :param portal: portal
     """
 
-    interval = request.GET.get('interval', None)
-
     if request.user.user_level_permissions.level == UserLevelPermissionModel.UserLevelEnum.ADMIN:
 
         feedbacks = FeedbackModel.objects.select_related("location").prefetch_related(
@@ -488,68 +489,6 @@ def get_feedback_logistics(request, portal):
             )
         )
 
-    now = timezone.now()
-
-    if interval:
-
-        interval = interval.upper()
-
-        if interval in ['DAY', 'WEEK', 'MONTH', 'YEAR']:
-            if interval == 'DAY':
-                start_date = now.replace(
-                    hour=0, minute=0, second=0, microsecond=0)
-                end_date = now
-                trunc_fn = TruncHour("created_at")
-                date_format = "%H:%M"
-
-            elif interval == 'WEEK':
-                start_date = (now - timedelta(days=now.weekday())
-                              ).replace(hour=0, minute=0, second=0, microsecond=0)
-                end_date = now
-                trunc_fn = TruncDay("created_at")
-                date_format = "%d/%m"
-
-            elif interval == 'MONTH':
-                start_date = now.replace(
-                    day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_date = now
-                trunc_fn = TruncDay("created_at")
-                date_format = "%Y-%m-%d"
-
-            elif interval == 'YEAR':
-                start_date = now.replace(
-                    month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_date = now
-                trunc_fn = TruncMonth("created_at")
-                date_format = "%b"
-
-            feedbacks = feedbacks.filter(
-                created_at__gte=start_date, created_at__lte=end_date)
-
-        else:
-            return Response({"msg": "Invalid interval"}, status=status.HTTP_400_BAD_REQUEST)
-
-    trend_data = feedbacks.annotate(
-        period=trunc_fn
-    ).values('period', 'classification').annotate(
-        count=Count('id')
-    ).order_by('period')
-
-    trend = defaultdict(lambda: {"positive": 0, "negative": 0})
-
-    for item in trend_data:
-        if interval == 'MONTH':
-            # Group by week for monthly trend
-            monday = item['period'] - timedelta(days=item['period'].weekday())
-            key = monday.strftime("%d/%m")
-        else:
-            key = item['period'].strftime(date_format)
-
-        if item['classification'] in ['EX', 'GO']:
-            trend[key]['positive'] += item['count']
-        else:
-            trend[key]['negative'] += item['count']
-
     total_feedbacks = feedbacks.count()
     total_positive_feedbacks = feedbacks.filter(classification__in=[
                                                 FeedbackModel.FeedbackClassification.EXCELLENT, FeedbackModel.FeedbackClassification.GOOD]).count()
@@ -588,9 +527,6 @@ def get_feedback_logistics(request, portal):
             'positive_feedbacks': total_positive_feedbacks,
             'negative_feedbacks': total_negative_feedbacks,
         },
-        'trend': [
-            {"time": time, "positive": values["positive"], "negative": values["negative"]} for time, values in sorted(trend.items())
-        ],
         'distribution': {
             'excellent_feedbacks': get_feedback_distribution(total_excellent_feedbacks, total_feedbacks),
             'good_feedbacks': get_feedback_distribution(total_good_feedbacks, total_feedbacks),

@@ -10,4 +10,7 @@ urlpatterns = [
     path('groups/', include('feedback_tracking.api.feedback_system.groups.urls'),),
     path('feedbacks/', include('feedback_tracking.api.feedback_system.feedbacks.urls'),),
     path('users/', include('feedback_tracking.api.feedback_system.users.urls'),),
+    path('payments/', include('feedback_tracking.api.feedback_system.payments.urls'),),
+    path('organizations/',
+         include('feedback_tracking.api.feedback_system.organizations.urls'),),
 ]

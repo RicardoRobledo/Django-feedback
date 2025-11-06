@@ -8,6 +8,8 @@ urlpatterns = [
     path('location/', views.LocationView.as_view(), name='base_location'),
     path('location/credentials/<int:location_id>/',
          views.get_location_credentials, name='get_location_credentials'),
+    path('location/regenerate-credentials/<int:location_id>/',
+         views.regenerate_location_credentials, name='regenerate_location_credentials'),
     path('location/verify-credentials/<int:location_id>/',
          views.verify_location_credentials, name='verify_location_credentials'),
     path('location/retrieve/<int:location_id>/',

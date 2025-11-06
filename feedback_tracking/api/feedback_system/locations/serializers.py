@@ -1,3 +1,5 @@
+import re
+
 from django.db.models import Q
 
 from rest_framework import serializers
@@ -38,6 +40,11 @@ class PostLocationSerializer(serializers.ModelSerializer):
 
     def validate_name(self, value):
 
+        if not re.fullmatch(r'[A-Za-z0-9]+', value):
+            raise serializers.ValidationError(
+                "Only letters and numbers are allowed in the name."
+            )
+
         if LocationModel.objects.filter(name=value).exists():
             raise serializers.ValidationError(
                 "A location with this name already exists.")
@@ -74,8 +81,24 @@ class GetLocationsSerializer(serializers.ModelSerializer):
         # Llamamos a la representación por defecto
         rep = super().to_representation(instance)
 
+        total_feedbacks = instance.location_feedbacks.count()
+        total_positive_feedbacks = instance.location_feedbacks.filter(
+            Q(classification=FeedbackModel.FeedbackClassification.EXCELLENT) |
+            Q(classification=FeedbackModel.FeedbackClassification.GOOD)
+        ).count()
+
         # Agregamos el nombre del grupo
         rep['group'] = instance.group.name if instance.group else None
+        rep['total_feedbacks'] = total_feedbacks
+
+        if total_feedbacks == 0:
+            rep['satisfaction_percentage'] = 0
+        else:
+            rep['satisfaction_percentage'] = round(
+                total_positive_feedbacks / total_feedbacks * 100)
+
+        if instance.group.target_percentage != 0:
+            rep['target_percentage'] = instance.group.target_percentage
 
         return rep
 

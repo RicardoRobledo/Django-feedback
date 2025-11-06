@@ -21,13 +21,5 @@ class PricesView(APIView):
         """
         Returns the prices of the plans available in Stripe.
         """
-        prices = StripeSingleton().Price.list(active=True)['data']
-        prices = list(map(lambda price: {
-            'id': price.id,
-            'nickname': price.nickname,
-            'unit_amount': price.unit_amount,
-            'currency': price.currency,
-            'interval': price.recurring.interval,
-        }, prices))
 
-        return Response(prices, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)

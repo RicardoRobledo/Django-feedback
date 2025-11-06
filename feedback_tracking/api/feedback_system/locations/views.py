@@ -1,5 +1,6 @@
 import json
 from django.http import HttpResponse, JsonResponse
+from django.db import transaction, IntegrityError
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -7,31 +8,36 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from ...permissions import BelongsToOrganizationPermission
+from ...permissions import BelongsToOrganizationPermission, CanCreateLocationUnderPricingLimitPermission
 from .serializers import GetLocationSerializer, GetLocationsSerializer, PostLocationSerializer, PUTLocationSerializer, PUTAvailabilitySerializer
 from feedback_tracking.feedback_system.locations.models import LocationModel, AvailabilityModel, GroupModel
 from feedback_tracking.feedback_system.permissions.models import UserLevelPermissionModel, UserLocationPermissionModel, UserGroupPermissionModel
 
 
 class LocationView(APIView):
-
-    permission_classes = [IsAuthenticated, BelongsToOrganizationPermission]
+    permission_classes = [IsAuthenticated, BelongsToOrganizationPermission,
+                          CanCreateLocationUnderPricingLimitPermission,]
 
     def post(self, request, portal):
 
-        location_serialized = PostLocationSerializer(data=request.data)
+        serializer = PostLocationSerializer(data=request.data)
 
-        if not location_serialized.is_valid():
-            return Response(location_serialized.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        location = location_serialized.save()
+        try:
+            with transaction.atomic():
 
-        AvailabilityModel.objects.create(location=location,)
+                location = serializer.save()
+                AvailabilityModel.objects.create(location=location)
 
-        return Response(location_serialized.data, status=status.HTTP_201_CREATED)
+        except IntegrityError as e:
+            return Response(
+                {'detail': 'Error creating location and availability', },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    def get(self, request, portal):
-        return JsonResponse({"message": "GET request received"})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -155,6 +161,34 @@ def get_location_credentials(request, portal, location_id):
     )
     response['Content-Disposition'] = f'attachment; filename=location_credentials.json'
     return response
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated, BelongsToOrganizationPermission])
+def regenerate_location_credentials(request, portal, location_id):
+
+    if request.user.user_level_permissions.level == UserLevelPermissionModel.UserLevelEnum.USER:
+
+        return Response({"msg": "User does not have permission to regenerate credentials"}, status=status.HTTP_403_FORBIDDEN)
+
+    elif request.user.user_level_permissions.level == UserLevelPermissionModel.UserLevelEnum.MANAGER:
+
+        # Get locations for manager and user roles based on their permissions
+        permission_ids = request.user.user_group_permissions.filter(has_permission=True).values_list('group_id',
+                                                                                                     flat=True)
+        location = LocationModel.objects.filter(
+            group_id__in=permission_ids, id=location_id)
+
+    elif request.user.user_level_permissions.level == UserLevelPermissionModel.UserLevelEnum.ADMIN:
+
+        location = LocationModel.objects.filter(id=location_id)
+
+    if not location.exists():
+        return Response({"msg": "Location not found or you do not have permission to access it"}, status=status.HTTP_404_NOT_FOUND)
+
+    location.first().generate_credentials()
+
+    return Response(data={"msg": "Credentials regenerated successfully", }, status=status.HTTP_200_OK)
 
 
 @api_view(['PUT'])

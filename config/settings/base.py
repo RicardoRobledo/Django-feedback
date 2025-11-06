@@ -36,12 +36,21 @@ SECRET_KEY = config('SECRET_KEY')
 HMAC_SECRET_KEY = config('HMAC_SECRET_KEY')
 
 SHARED_APPS = [
+    'django.contrib.contenttypes',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
     'django_celery_beat',
     'django_celery_results',
     'django_tenants',
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'tenant_users.permissions',
+    'tenant_users.tenants',
 
     # Base apps
 
@@ -52,17 +61,13 @@ SHARED_APPS = [
     # API apps
 
     'feedback_tracking.api.administrative_system.users',
-
-    'django.contrib.contenttypes',
-
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
 ]
 
 TENANT_APPS = [
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'tenant_users.permissions',
+
     # Base apps
 
     'feedback_tracking.feedback_system.feedbacks',
@@ -78,9 +83,13 @@ TENANT_APPS = [
     'feedback_tracking.api.feedback_system.groups',
     'feedback_tracking.api.feedback_system.locations',
     'feedback_tracking.api.feedback_system.users',
+    'feedback_tracking.api.feedback_system.payments',
+    'feedback_tracking.api.feedback_system.organizations',
 ]
 
-INSTALLED_APPS = SHARED_APPS + TENANT_APPS
+INSTALLED_APPS = list(SHARED_APPS) + [
+    app for app in TENANT_APPS if app not in SHARED_APPS
+]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -92,6 +101,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # 'tenant_users.tenants.middleware.TenantAccessMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -166,18 +176,33 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.UserModel'
 
+# Email
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = config('SENDGRID_API_KEY')
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+
+# Frontend URL
+FRONTEND_URL = config('FRONTEND_URL')
+
 # Stripe
-MERCADOPAGO_ACCESS_TOKEN = config('MERCADOPAGO_ACCESS_TOKEN')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_SIGNING_SECRET = config('STRIPE_SIGNING_SECRET')
 
 # Django tenants
-TENANT_MODEL = "organizations.OrganizationModel"
-TENANT_DOMAIN_MODEL = "organizations.DomainModel"
+TENANT_MODEL = 'organizations.OrganizationModel'
+TENANT_DOMAIN_MODEL = 'organizations.DomainModel'
+TENANT_USERS_ACCESS_ERROR_MESSAGE = 'Custom access denied message.'
+TENANT_USERS_DOMAIN = 'localhost'
 
 # Django Database routers
 DATABASE_ROUTERS = (
     'django_tenants.routers.TenantSyncRouter',
 )
+
+AUTHENTICATION_BACKENDS = ('tenant_users.permissions.backend.UserBackend',)
 
 # Rest Framework
 REST_FRAMEWORK = {

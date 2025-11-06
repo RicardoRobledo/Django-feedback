@@ -17,5 +17,5 @@ urlpatterns = [
     path('user-update/<int:user_id>/account/',
          views.update_user_account, name='update_user_account'),
     path('user/user-permissions/', views.UserLevelPermissionView.as_view(),
-         name="get_user_permissions"),
+         name="get_permissions"),
 ]

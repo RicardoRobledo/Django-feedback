@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 
-from feedback_tracking.api.permissions import BelongsToOrganizationPermission
+from feedback_tracking.api.permissions import BelongsToOrganizationPermission, CanCreateUserUnderPricingLimitPermission
 from feedback_tracking.feedback_system.permissions.models import UserLevelPermissionModel, UserLocationPermissionModel, UserGroupPermissionModel
 from feedback_tracking.feedback_system.locations.models import LocationModel, GroupModel
 from feedback_tracking.administrative_system.users.models import UserModel
@@ -23,7 +23,7 @@ __version__ = '0.1'
 
 class UserLevelPermissionView(APIView):
 
-    permission_classes = (IsAuthenticated, BelongsToOrganizationPermission)
+    permission_classes = (IsAuthenticated, BelongsToOrganizationPermission,)
 
     def get(self, request, *args, **kwargs):
         """
@@ -33,9 +33,12 @@ class UserLevelPermissionView(APIView):
         :return: user level permissions
         """
 
-        user_level_permissions = request.user.user_level_permissions
+        if request.user.user_level_permissions:
+            user_level_permissions = request.user.user_level_permissions
 
-        return Response(data={'user_level': user_level_permissions.level}, status=status.HTTP_200_OK)
+            return Response(data={'user_level': user_level_permissions.level}, status=status.HTTP_200_OK)
+        else:
+            return Response(data={'detail': 'User level permissions not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['GET'])
@@ -427,7 +430,7 @@ def update_user_password(request, portal, user_id):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, BelongsToOrganizationPermission])
+@permission_classes([IsAuthenticated, BelongsToOrganizationPermission, CanCreateUserUnderPricingLimitPermission,])
 def create_system_user(request, portal):
     """
     This endpoint is used to create a new user in the organization.

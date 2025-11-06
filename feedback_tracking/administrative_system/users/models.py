@@ -1,16 +1,16 @@
+from django.contrib.auth.base_user import BaseUserManager
 from django.db import models
 
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.contrib.auth.models import BaseUserManager
+from tenant_users.tenants.models import UserProfile, UserProfileManager
 
 from feedback_tracking.base.models import BaseModel
 from feedback_tracking.administrative_system.organizations.models import OrganizationModel
-from feedback_tracking.singletons.stripe_singleton import StripeSingleton
 
 
-class UserManager(BaseUserManager):
+class UserManager(UserProfileManager):
 
-    def create_user(self, first_name, middle_name, last_name, username, password, email, is_staff, is_active, is_superuser=False):
+    def create_user(self, first_name, middle_name, last_name, username, password, email, is_staff=False, is_active=True):
+        email = self.normalize_email(email)
         user = self.model(
             first_name=first_name,
             middle_name=middle_name,
@@ -19,17 +19,25 @@ class UserManager(BaseUserManager):
             email=email,
             is_staff=is_staff,
             is_active=is_active,
-            is_superuser=is_superuser,
         )
         user.set_password(password)
         user.save(using=self._db)
         return user
 
     def create_superuser(self, first_name, middle_name, last_name, username, password, email):
-        return self.create_user(first_name, middle_name, last_name, username, password, email, True, True, True)
+        return self.create_user(
+            first_name=first_name,
+            middle_name=middle_name,
+            last_name=last_name,
+            username=username,
+            password=password,
+            email=email,
+            is_staff=True,
+            is_active=True,
+        )
 
 
-class UserModel(AbstractBaseUser, PermissionsMixin, BaseModel):
+class UserModel(UserProfile, BaseModel):
     """
     This model define an user
 
@@ -51,6 +59,20 @@ class UserModel(AbstractBaseUser, PermissionsMixin, BaseModel):
     REQUIRED_FIELDS = ['first_name', 'middle_name', 'last_name', 'email']
 
     objects = UserManager()
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='user_model_set',
+        blank=True,
+        help_text='The groups this user belongs to.',
+        verbose_name='groups',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='user_model_set',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions',
+    )
     organization = models.ForeignKey(
         OrganizationModel,
         on_delete=models.DO_NOTHING,
@@ -66,22 +88,8 @@ class UserModel(AbstractBaseUser, PermissionsMixin, BaseModel):
     username = models.CharField(
         unique=True, max_length=20, null=False, blank=False,)
     email = models.EmailField(unique=True, null=False, blank=False,)
-    stripe_customer_id = models.CharField(
-        max_length=100, unique=True, blank=True, null=True, help_text="Unique identifier for the Stripe customer")
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-
-    def delete(self, *args, **kwargs):
-
-        # first delete the Stripe customer if it exists
-        if self.stripe_customer_id:
-            try:
-                # Attempt to delete the customer from Stripe
-                StripeSingleton().customer().delete(self.stripe_customer_id)
-            except Exception as e:
-                print(f"Error deleting Stripe customer: {e}")
-
-        super().delete(*args, **kwargs)
 
     def __str__(self):
         return self.username
@@ -89,7 +97,6 @@ class UserModel(AbstractBaseUser, PermissionsMixin, BaseModel):
     def __repr__(self):
         return (f'UserModel('
                 f'id={self.id}, '
-                f'stripe_customer_id={self.stripe_customer_id}, '
                 f'first_name={self.first_name}, '
                 f'middle_name={self.middle_name}, '
                 f'last_name={self.last_name}, '
