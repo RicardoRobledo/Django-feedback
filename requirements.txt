@@ -10,7 +10,7 @@ click-plugins==1.1.1
 click-repl==0.3.0
 colorama==0.4.6
 cron-descriptor==1.4.5
-Django==5.1.6
+Django==5.1.14
 django-celery-beat==2.8.0
 django-cors-headers==4.7.0
 django-tenant-users==2.1.1
