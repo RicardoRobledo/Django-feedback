@@ -1,4 +1,4 @@
-from .base import BASE_DIR
+from .base import BASE_DIR, config
 from corsheaders.defaults import default_headers
 
 
@@ -15,8 +15,12 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django_tenants.postgresql_backend',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT'),
     }
 }
 
